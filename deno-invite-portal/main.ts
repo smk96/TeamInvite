@@ -191,6 +191,7 @@ router.post("/api/invite", async (ctx) => {
     
     if (!body) {
       ctx.response.status = 400;
+      ctx.response.headers.set("Content-Type", "application/json");
       ctx.response.body = { error: "No JSON data provided" };
       return;
     }
@@ -198,6 +199,7 @@ router.post("/api/invite", async (ctx) => {
     let emails = body.emails || [];
     if (!Array.isArray(emails) || emails.length === 0) {
       ctx.response.status = 400;
+      ctx.response.headers.set("Content-Type", "application/json");
       ctx.response.body = { error: "emails field is required and must be a list" };
       return;
     }
@@ -205,6 +207,7 @@ router.post("/api/invite", async (ctx) => {
     emails = emails.map((e: string) => e.trim()).filter((e: string) => e);
     if (emails.length === 0) {
       ctx.response.status = 400;
+      ctx.response.headers.set("Content-Type", "application/json");
       ctx.response.body = { error: "At least one valid email is required" };
       return;
     }
@@ -217,41 +220,59 @@ router.post("/api/invite", async (ctx) => {
     const result = await sendInvitesApi(emails, role, resend, config.token, config.accountId);
 
     ctx.response.status = result.success ? 200 : (result.statusCode || 500);
+    ctx.response.headers.set("Content-Type", "application/json");
     ctx.response.body = result;
   } catch (error) {
     console.error("Error in /api/invite:", error);
     ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
     ctx.response.body = { error: `Server error: ${error.message}` };
   }
 });
 
 // API: Get config
 router.get("/api/config", (ctx) => {
-  const config = getConfigFromCookies(ctx);
-  const currentToken = config.token || TOKEN;
-  
-  ctx.response.body = {
-    available_roles: ["standard-user", "admin", "viewer"],
-    account_id: config.accountId || ACCOUNT_ID,
-    token_configured: !!currentToken,
-  };
+  try {
+    const config = getConfigFromCookies(ctx);
+    const currentToken = config.token || TOKEN;
+    
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = {
+      available_roles: ["standard-user", "admin", "viewer"],
+      account_id: config.accountId || ACCOUNT_ID,
+      token_configured: !!currentToken,
+    };
+  } catch (error) {
+    console.error("Error in GET /api/config:", error);
+    ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = { error: `Failed to load config: ${error.message}` };
+  }
 });
 
 // API: Admin config
 router.get("/api/admin/config", (ctx) => {
-  const config = getConfigFromCookies(ctx);
-  const currentToken = config.token || TOKEN;
-  const currentAccountId = config.accountId || ACCOUNT_ID;
-  
-  ctx.response.body = {
-    account_id: currentAccountId,
-    token_configured: !!currentToken,
-    token_preview: currentToken ? `${currentToken.substring(0, 10)}...` : null,
-    env_token_configured: !!TOKEN,
-    env_account_id: ACCOUNT_ID,
-    cookie_token_configured: !!config.token,
-    cookie_account_id: config.accountId,
-  };
+  try {
+    const config = getConfigFromCookies(ctx);
+    const currentToken = config.token || TOKEN;
+    const currentAccountId = config.accountId || ACCOUNT_ID;
+    
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = {
+      account_id: currentAccountId,
+      token_configured: !!currentToken,
+      token_preview: currentToken ? `${currentToken.substring(0, 10)}...` : null,
+      env_token_configured: !!TOKEN,
+      env_account_id: ACCOUNT_ID,
+      cookie_token_configured: !!config.token,
+      cookie_account_id: config.accountId,
+    };
+  } catch (error) {
+    console.error("Error in GET /api/admin/config:", error);
+    ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = { error: `Failed to load config: ${error.message}` };
+  }
 });
 
 router.post("/api/admin/config", async (ctx) => {
@@ -261,6 +282,7 @@ router.post("/api/admin/config", async (ctx) => {
     
     if (!body) {
       ctx.response.status = 400;
+      ctx.response.headers.set("Content-Type", "application/json");
       ctx.response.body = { error: "No JSON data provided" };
       return;
     }
@@ -282,6 +304,7 @@ router.post("/api/admin/config", async (ctx) => {
     // Get current config for response
     const config = getConfigFromCookies(ctx);
 
+    ctx.response.headers.set("Content-Type", "application/json");
     ctx.response.body = {
       success: true,
       message: "配置已保存到浏览器 Cookie（30天有效期）",
@@ -289,35 +312,68 @@ router.post("/api/admin/config", async (ctx) => {
       account_id: config.accountId || ACCOUNT_ID,
     };
   } catch (error) {
-    console.error("Error in /api/admin/config:", error);
+    console.error("Error in POST /api/admin/config:", error);
     ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
     ctx.response.body = { error: `配置更新失败: ${error.message}` };
   }
 });
 
 // Health check
 router.get("/health", (ctx) => {
-  const config = getConfigFromCookies(ctx);
-  const currentToken = config.token || TOKEN;
-  
-  ctx.response.body = {
-    status: "healthy",
-    token_configured: !!currentToken,
-    env_token_configured: !!TOKEN,
-    cookie_token_configured: !!config.token,
-  };
+  try {
+    const config = getConfigFromCookies(ctx);
+    const currentToken = config.token || TOKEN;
+    
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = {
+      status: "healthy",
+      token_configured: !!currentToken,
+      env_token_configured: !!TOKEN,
+      cookie_token_configured: !!config.token,
+    };
+  } catch (error) {
+    console.error("Error in /health:", error);
+    ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = { status: "unhealthy", error: error.message };
+  }
 });
 
-app.use(router.routes());
-app.use(router.allowedMethods());
+// Global error handler
+app.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (error) {
+    console.error("❌ Unhandled error:", error);
+    ctx.response.status = 500;
+    ctx.response.headers.set("Content-Type", "application/json");
+    ctx.response.body = {
+      error: "Internal Server Error",
+      message: error.message,
+    };
+  }
+});
 
-// CORS middleware
+// CORS middleware (must be before routes)
 app.use(async (ctx, next) => {
   ctx.response.headers.set("Access-Control-Allow-Origin", "*");
   ctx.response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
   await next();
 });
+
+// Request logging middleware
+app.use(async (ctx, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  console.log(`${ctx.request.method} ${ctx.request.url.pathname} - ${ctx.response.status} - ${ms}ms`);
+});
+
+// Register routes
+app.use(router.routes());
+app.use(router.allowedMethods());
 
 const PORT = parseInt(Deno.env.get("PORT") || "5000");
 console.log(`🚀 ChatGPT Invite Portal starting...`);
