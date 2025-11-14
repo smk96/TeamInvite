@@ -5,15 +5,15 @@ const app = new Application();
 const router = new Router();
 
 // Helper functions for cookie-based config storage
-function getConfigFromCookies(ctx: any): { token?: string; accountId?: string } {
-  const token = ctx.cookies.get("chatgpt_token");
-  const accountId = ctx.cookies.get("chatgpt_account_id");
+async function getConfigFromCookies(ctx: any): Promise<{ token?: string; accountId?: string }> {
+  const token = await ctx.cookies.get("chatgpt_token");
+  const accountId = await ctx.cookies.get("chatgpt_account_id");
   return { token, accountId };
 }
 
-function setConfigCookies(ctx: any, token?: string, accountId?: string) {
+async function setConfigCookies(ctx: any, token?: string, accountId?: string) {
   if (token) {
-    ctx.cookies.set("chatgpt_token", token, {
+    await ctx.cookies.set("chatgpt_token", token, {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
       sameSite: "lax",
@@ -21,7 +21,7 @@ function setConfigCookies(ctx: any, token?: string, accountId?: string) {
     });
   }
   if (accountId) {
-    ctx.cookies.set("chatgpt_account_id", accountId, {
+    await ctx.cookies.set("chatgpt_account_id", accountId, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
@@ -216,7 +216,7 @@ router.post("/api/invite", async (ctx) => {
     const resend = body.resend || false;
 
     // Get config from cookies
-    const config = getConfigFromCookies(ctx);
+    const config = await getConfigFromCookies(ctx);
     const result = await sendInvitesApi(emails, role, resend, config.token, config.accountId);
 
     ctx.response.status = result.success ? 200 : (result.statusCode || 500);
@@ -231,9 +231,9 @@ router.post("/api/invite", async (ctx) => {
 });
 
 // API: Get config
-router.get("/api/config", (ctx) => {
+router.get("/api/config", async (ctx) => {
   try {
-    const config = getConfigFromCookies(ctx);
+    const config = await getConfigFromCookies(ctx);
     const currentToken = config.token || TOKEN;
     
     ctx.response.headers.set("Content-Type", "application/json");
@@ -251,9 +251,9 @@ router.get("/api/config", (ctx) => {
 });
 
 // API: Admin config
-router.get("/api/admin/config", (ctx) => {
+router.get("/api/admin/config", async (ctx) => {
   try {
-    const config = getConfigFromCookies(ctx);
+    const config = await getConfigFromCookies(ctx);
     const currentToken = config.token || TOKEN;
     const currentAccountId = config.accountId || ACCOUNT_ID;
     
@@ -299,10 +299,10 @@ router.post("/api/admin/config", async (ctx) => {
     }
 
     // Save to cookies
-    setConfigCookies(ctx, tokenToSave, accountIdToSave);
+    await setConfigCookies(ctx, tokenToSave, accountIdToSave);
 
     // Get current config for response
-    const config = getConfigFromCookies(ctx);
+    const config = await getConfigFromCookies(ctx);
 
     ctx.response.headers.set("Content-Type", "application/json");
     ctx.response.body = {
@@ -320,9 +320,9 @@ router.post("/api/admin/config", async (ctx) => {
 });
 
 // Health check
-router.get("/health", (ctx) => {
+router.get("/health", async (ctx) => {
   try {
-    const config = getConfigFromCookies(ctx);
+    const config = await getConfigFromCookies(ctx);
     const currentToken = config.token || TOKEN;
     
     ctx.response.headers.set("Content-Type", "application/json");
