@@ -4,6 +4,32 @@ import { dirname, fromFileUrl, join } from "@std/path";
 const app = new Application();
 const router = new Router();
 
+// Helper functions for cookie-based config storage
+function getConfigFromCookies(ctx: any): { token?: string; accountId?: string } {
+  const token = ctx.cookies.get("chatgpt_token");
+  const accountId = ctx.cookies.get("chatgpt_account_id");
+  return { token, accountId };
+}
+
+function setConfigCookies(ctx: any, token?: string, accountId?: string) {
+  if (token) {
+    ctx.cookies.set("chatgpt_token", token, {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: "lax",
+      maxAge: 86400 * 30, // 30 days
+    });
+  }
+  if (accountId) {
+    ctx.cookies.set("chatgpt_account_id", accountId, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 86400 * 30,
+    });
+  }
+}
+
 // Configuration
 const API_BASE = "https://chatgpt.com/backend-api";
 const ACCOUNT_ID = Deno.env.get("CHATGPT_ACCOUNT_ID") || "11045a20-bdb4-444f-9bd6-768640226554";
@@ -13,11 +39,7 @@ const DEFAULT_USER_AGENT = Deno.env.get(
   "CHATGPT_IMPERSONATE_UA"
 ) || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// Runtime configuration
-const runtimeConfig = {
-  token: TOKEN,
-  accountId: ACCOUNT_ID,
-};
+// Note: Runtime config is now stored in cookies per-user
 
 interface InviteRequest {
   emails: string[];
@@ -54,21 +76,23 @@ function buildInviteHeaders(token: string, accountId: string): HeadersInit {
 async function sendInvitesApi(
   emails: string[],
   role: string,
-  resend: boolean
+  resend: boolean,
+  token?: string,
+  accountId?: string
 ): Promise<InviteResponse> {
-  const currentToken = runtimeConfig.token || TOKEN;
+  const currentToken = token || TOKEN;
   if (!currentToken) {
     return {
       success: false,
-      error: "CHATGPT_BEARER_TOKEN environment variable not set",
+      error: "CHATGPT_BEARER_TOKEN not configured. Please configure in admin panel or set environment variable.",
       statusCode: undefined,
       data: null,
     };
   }
 
-  const accountId = runtimeConfig.accountId || ACCOUNT_ID;
-  const inviteUrl = buildInviteUrl(accountId);
-  const headers = buildInviteHeaders(currentToken, accountId);
+  const currentAccountId = accountId || ACCOUNT_ID;
+  const inviteUrl = buildInviteUrl(currentAccountId);
+  const headers = buildInviteHeaders(currentToken, currentAccountId);
 
   const payload = {
     email_addresses: emails,
@@ -162,6 +186,7 @@ router.get("/admin", async (ctx) => {
 // API: Send invites
 router.post("/api/invite", async (ctx) => {
   try {
+    // Read body only once
     const body = await ctx.request.body.json();
     
     if (!body) {
@@ -187,11 +212,14 @@ router.post("/api/invite", async (ctx) => {
     const role = body.role || "standard-user";
     const resend = body.resend || false;
 
-    const result = await sendInvitesApi(emails, role, resend);
+    // Get config from cookies
+    const config = getConfigFromCookies(ctx);
+    const result = await sendInvitesApi(emails, role, resend, config.token, config.accountId);
 
     ctx.response.status = result.success ? 200 : (result.statusCode || 500);
     ctx.response.body = result;
   } catch (error) {
+    console.error("Error in /api/invite:", error);
     ctx.response.status = 500;
     ctx.response.body = { error: `Server error: ${error.message}` };
   }
@@ -199,28 +227,36 @@ router.post("/api/invite", async (ctx) => {
 
 // API: Get config
 router.get("/api/config", (ctx) => {
-  const currentToken = runtimeConfig.token || TOKEN;
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  
   ctx.response.body = {
     available_roles: ["standard-user", "admin", "viewer"],
-    account_id: runtimeConfig.accountId || ACCOUNT_ID,
+    account_id: config.accountId || ACCOUNT_ID,
     token_configured: !!currentToken,
   };
 });
 
 // API: Admin config
 router.get("/api/admin/config", (ctx) => {
-  const currentToken = runtimeConfig.token || TOKEN;
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  const currentAccountId = config.accountId || ACCOUNT_ID;
+  
   ctx.response.body = {
-    account_id: runtimeConfig.accountId || ACCOUNT_ID,
+    account_id: currentAccountId,
     token_configured: !!currentToken,
     token_preview: currentToken ? `${currentToken.substring(0, 10)}...` : null,
     env_token_configured: !!TOKEN,
     env_account_id: ACCOUNT_ID,
+    cookie_token_configured: !!config.token,
+    cookie_account_id: config.accountId,
   };
 });
 
 router.post("/api/admin/config", async (ctx) => {
   try {
+    // Read body only once
     const body = await ctx.request.body.json();
     
     if (!body) {
@@ -229,21 +265,31 @@ router.post("/api/admin/config", async (ctx) => {
       return;
     }
 
+    let tokenToSave: string | undefined;
+    let accountIdToSave: string | undefined;
+
     if (body.token) {
-      runtimeConfig.token = body.token.trim() || null;
+      tokenToSave = body.token.trim();
     }
 
     if (body.account_id) {
-      runtimeConfig.accountId = body.account_id.trim() || ACCOUNT_ID;
+      accountIdToSave = body.account_id.trim();
     }
+
+    // Save to cookies
+    setConfigCookies(ctx, tokenToSave, accountIdToSave);
+
+    // Get current config for response
+    const config = getConfigFromCookies(ctx);
 
     ctx.response.body = {
       success: true,
-      message: "配置已更新",
-      token_configured: !!runtimeConfig.token,
-      account_id: runtimeConfig.accountId,
+      message: "配置已保存到浏览器 Cookie（30天有效期）",
+      token_configured: !!(config.token || TOKEN),
+      account_id: config.accountId || ACCOUNT_ID,
     };
   } catch (error) {
+    console.error("Error in /api/admin/config:", error);
     ctx.response.status = 500;
     ctx.response.body = { error: `配置更新失败: ${error.message}` };
   }
@@ -251,10 +297,14 @@ router.post("/api/admin/config", async (ctx) => {
 
 // Health check
 router.get("/health", (ctx) => {
-  const currentToken = runtimeConfig.token || TOKEN;
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  
   ctx.response.body = {
     status: "healthy",
     token_configured: !!currentToken,
+    env_token_configured: !!TOKEN,
+    cookie_token_configured: !!config.token,
   };
 });
 
