@@ -1,373 +1,330 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理面板 - ChatGPT 邀请管理</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .admin-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .admin-header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-        
-        .admin-header h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .admin-header h1 i {
-            margin-right: 15px;
-            color: #ff6b6b;
-        }
-        
-        .config-section {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .config-section h3 {
-            color: #444;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.3rem;
-        }
-        
-        .config-section h3 i {
-            color: #667eea;
-        }
-        
-        .config-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-bottom: 25px;
-        }
-        
-        .config-item {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .config-label {
-            font-weight: 600;
-            color: #444;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .config-label i {
-            color: #667eea;
-            width: 16px;
-        }
-        
-        .config-value {
-            padding: 12px 16px;
-            background: #f8f9fa;
-            border: 2px solid #e1e8ed;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            word-break: break-all;
-        }
-        
-        .config-value.configured {
-            background: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-        }
-        
-        .config-value.not-configured {
-            background: #fff3cd;
-            border-color: #ffeaa7;
-            color: #856404;
-        }
-        
-        .token-input-section {
-            border-top: 2px solid #f0f0f0;
-            padding-top: 25px;
-            margin-top: 25px;
-        }
-        
-        .token-form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .input-group label {
-            font-weight: 600;
-            color: #444;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .input-group label i {
-            color: #667eea;
-            width: 16px;
-        }
-        
-        .input-group input {
-            padding: 12px 16px;
-            border: 2px solid #e1e8ed;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .input-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .input-help {
-            font-size: 0.9rem;
-            color: #666;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .input-help i {
-            color: #667eea;
-        }
-        
-        .admin-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-        }
-        
-        .btn-admin {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            justify-content: center;
-        }
-        
-        .btn-save {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-        }
-        
-        .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
-        }
-        
-        .btn-save:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .btn-back {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-back:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-        
-        .warning-box {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .warning-box i {
-            color: #856404;
-            font-size: 1.2rem;
-        }
-        
-        .warning-box p {
-            margin: 0;
-            color: #856404;
-            font-weight: 500;
-        }
-        
-        @media (max-width: 768px) {
-            .config-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .admin-actions {
-                flex-direction: column;
-            }
-            
-            .admin-header h1 {
-                font-size: 1.8rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="admin-container">
-        <header class="admin-header">
-            <h1><i class="fas fa-cog"></i> 管理面板</h1>
-            <p class="subtitle">配置 ChatGPT 邀请管理系统</p>
-        </header>
+import { Application, Router } from "@oak/oak";
+import { dirname, fromFileUrl, join } from "@std/path";
 
-        <div class="config-section">
-            <h3><i class="fas fa-info-circle"></i> 当前配置状态</h3>
-            
-            <div class="config-grid">
-                <div class="config-item">
-                    <div class="config-label">
-                        <i class="fas fa-key"></i>
-                        Bearer Token 状态
-                    </div>
-                    <div class="config-value" id="tokenStatus">检查中...</div>
-                </div>
-                
-                <div class="config-item">
-                    <div class="config-label">
-                        <i class="fas fa-id-card"></i>
-                        账户 ID
-                    </div>
-                    <div class="config-value" id="accountIdDisplay">检查中...</div>
-                </div>
-            </div>
-            
-            <div class="config-grid">
-                <div class="config-item">
-                    <div class="config-label">
-                        <i class="fas fa-server"></i>
-                        环境变量 Token
-                    </div>
-                    <div class="config-value" id="envTokenStatus">检查中...</div>
-                </div>
-                
-                <div class="config-item">
-                    <div class="config-label">
-                        <i class="fas fa-database"></i>
-                        运行时配置
-                    </div>
-                    <div class="config-value" id="runtimeStatus">检查中...</div>
-                </div>
-            </div>
+const app = new Application();
+const router = new Router();
 
-            <div class="token-input-section">
-                <div class="warning-box">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>注意：配置将保存在浏览器 Cookie 中（30天有效期）。如需永久配置，请设置环境变量 CHATGPT_BEARER_TOKEN。</p>
-                </div>
+// Helper functions for cookie-based config storage
+function getConfigFromCookies(ctx: any): { token?: string; accountId?: string } {
+  const token = ctx.cookies.get("chatgpt_token");
+  const accountId = ctx.cookies.get("chatgpt_account_id");
+  return { token, accountId };
+}
 
-                <form class="token-form" id="configForm">
-                    <div class="input-group">
-                        <label for="bearerToken">
-                            <i class="fas fa-key"></i>
-                            Bearer Token
-                        </label>
-                        <input 
-                            type="password" 
-                            id="bearerToken" 
-                            name="bearerToken" 
-                            placeholder="请输入 ChatGPT Bearer Token"
-                        >
-                        <div class="input-help">
-                            <i class="fas fa-info-circle"></i>
-                            从 ChatGPT 网站的开发者工具中获取 Authorization header 的 Bearer token
-                        </div>
-                    </div>
+function setConfigCookies(ctx: any, token?: string, accountId?: string) {
+  if (token) {
+    ctx.cookies.set("chatgpt_token", token, {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: "lax",
+      maxAge: 86400 * 30, // 30 days
+    });
+  }
+  if (accountId) {
+    ctx.cookies.set("chatgpt_account_id", accountId, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 86400 * 30,
+    });
+  }
+}
 
-                    <div class="input-group">
-                        <label for="accountId">
-                            <i class="fas fa-id-card"></i>
-                            账户 ID（可选）
-                        </label>
-                        <input 
-                            type="text" 
-                            id="accountId" 
-                            name="accountId" 
-                            placeholder="留空使用默认账户 ID"
-                        >
-                        <div class="input-help">
-                            <i class="fas fa-info-circle"></i>
-                            如果需要使用特定的账户 ID，请在此输入
-                        </div>
-                    </div>
+// Configuration
+const API_BASE = "https://chatgpt.com/backend-api";
+const ACCOUNT_ID = Deno.env.get("CHATGPT_ACCOUNT_ID") || "11045a20-bdb4-444f-9bd6-768640226554";
+const TOKEN = Deno.env.get("CHATGPT_BEARER_TOKEN");
 
-                    <div class="admin-actions">
-                        <button type="submit" class="btn-admin btn-save" id="saveBtn">
-                            <i class="fas fa-save"></i>
-                            保存配置
-                        </button>
-                        <a href="/" class="btn-admin btn-back">
-                            <i class="fas fa-arrow-left"></i>
-                            返回主页
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
+const DEFAULT_USER_AGENT = Deno.env.get(
+  "CHATGPT_IMPERSONATE_UA"
+) || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-            <div class="loading-spinner">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>正在保存配置...</p>
-            </div>
-        </div>
+// Note: Runtime config is now stored in cookies per-user
 
-        <div class="toast" id="toast">
-            <div class="toast-content">
-                <i class="toast-icon"></i>
-                <span class="toast-message"></span>
-            </div>
-        </div>
-    </div>
+interface InviteRequest {
+  emails: string[];
+  role: string;
+  resend: boolean;
+}
 
-    <footer class="footer">
-        <p>&copy; 2024 ChatGPT 邀请管理面板 | 
-            <a href="https://github.com" target="_blank">
-                <i class="fab fa-github"></i> GitHub
-            </a>
-        </p>
-    </footer>
+interface InviteResponse {
+  success: boolean;
+  statusCode?: number;
+  data?: unknown;
+  error?: string;
+}
 
-    <script src="/static/admin.js"></script>
-</body>
-</html>
+function buildInviteUrl(accountId: string): string {
+  return `${API_BASE}/accounts/${accountId}/invites`;
+}
+
+function buildInviteHeaders(token: string, accountId: string): HeadersInit {
+  return {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+    "chatgpt-account-id": accountId,
+    "Origin": "https://chatgpt.com",
+    "Referer": "https://chatgpt.com/",
+    "User-Agent": DEFAULT_USER_AGENT,
+  };
+}
+
+async function sendInvitesApi(
+  emails: string[],
+  role: string,
+  resend: boolean,
+  token?: string,
+  accountId?: string
+): Promise<InviteResponse> {
+  const currentToken = token || TOKEN;
+  if (!currentToken) {
+    return {
+      success: false,
+      error: "CHATGPT_BEARER_TOKEN not configured. Please configure in admin panel or set environment variable.",
+      statusCode: undefined,
+      data: null,
+    };
+  }
+
+  const currentAccountId = accountId || ACCOUNT_ID;
+  const inviteUrl = buildInviteUrl(currentAccountId);
+  const headers = buildInviteHeaders(currentToken, currentAccountId);
+
+  const payload = {
+    email_addresses: emails,
+    role: role,
+    resend_emails: resend,
+  };
+
+  try {
+    const response = await fetch(inviteUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch {
+      responseData = { raw_response: await response.text() };
+    }
+
+    return {
+      success: response.status === 200,
+      statusCode: response.status,
+      data: responseData,
+      error: response.status === 200 ? undefined : `HTTP ${response.status}`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Request failed: ${error.message}`,
+      statusCode: undefined,
+      data: null,
+    };
+  }
+}
+
+// Get base directory (works in both local and deployed environments)
+const baseDir = dirname(fromFileUrl(import.meta.url));
+
+// Serve static files
+router.get("/static/:file", async (ctx) => {
+  const file = ctx.params.file;
+  const filePath = join(baseDir, "static", file);
+  
+  try {
+    const content = await Deno.readTextFile(filePath);
+    const ext = file.split(".").pop();
+    
+    const contentTypes: Record<string, string> = {
+      "css": "text/css",
+      "js": "application/javascript",
+      "html": "text/html",
+    };
+    
+    ctx.response.headers.set("Content-Type", contentTypes[ext || ""] || "text/plain");
+    ctx.response.body = content;
+  } catch (error) {
+    console.error(`Error loading static file ${file}:`, error);
+    ctx.response.status = 404;
+    ctx.response.body = "File not found";
+  }
+});
+
+// Main page
+router.get("/", async (ctx) => {
+  try {
+    const html = await Deno.readTextFile(join(baseDir, "templates", "index.html"));
+    ctx.response.headers.set("Content-Type", "text/html");
+    ctx.response.body = html;
+  } catch (error) {
+    console.error("Error loading index.html:", error);
+    ctx.response.status = 500;
+    ctx.response.body = "Error loading page";
+  }
+});
+
+// Admin page
+router.get("/admin", async (ctx) => {
+  try {
+    const html = await Deno.readTextFile(join(baseDir, "templates", "admin.html"));
+    ctx.response.headers.set("Content-Type", "text/html");
+    ctx.response.body = html;
+  } catch (error) {
+    console.error("Error loading admin.html:", error);
+    ctx.response.status = 500;
+    ctx.response.body = "Error loading page";
+  }
+});
+
+// API: Send invites
+router.post("/api/invite", async (ctx) => {
+  try {
+    // Read body only once
+    const body = await ctx.request.body.json();
+    
+    if (!body) {
+      ctx.response.status = 400;
+      ctx.response.body = { error: "No JSON data provided" };
+      return;
+    }
+
+    let emails = body.emails || [];
+    if (!Array.isArray(emails) || emails.length === 0) {
+      ctx.response.status = 400;
+      ctx.response.body = { error: "emails field is required and must be a list" };
+      return;
+    }
+
+    emails = emails.map((e: string) => e.trim()).filter((e: string) => e);
+    if (emails.length === 0) {
+      ctx.response.status = 400;
+      ctx.response.body = { error: "At least one valid email is required" };
+      return;
+    }
+
+    const role = body.role || "standard-user";
+    const resend = body.resend || false;
+
+    // Get config from cookies
+    const config = getConfigFromCookies(ctx);
+    const result = await sendInvitesApi(emails, role, resend, config.token, config.accountId);
+
+    ctx.response.status = result.success ? 200 : (result.statusCode || 500);
+    ctx.response.body = result;
+  } catch (error) {
+    console.error("Error in /api/invite:", error);
+    ctx.response.status = 500;
+    ctx.response.body = { error: `Server error: ${error.message}` };
+  }
+});
+
+// API: Get config
+router.get("/api/config", (ctx) => {
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  
+  ctx.response.body = {
+    available_roles: ["standard-user", "admin", "viewer"],
+    account_id: config.accountId || ACCOUNT_ID,
+    token_configured: !!currentToken,
+  };
+});
+
+// API: Admin config
+router.get("/api/admin/config", (ctx) => {
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  const currentAccountId = config.accountId || ACCOUNT_ID;
+  
+  ctx.response.body = {
+    account_id: currentAccountId,
+    token_configured: !!currentToken,
+    token_preview: currentToken ? `${currentToken.substring(0, 10)}...` : null,
+    env_token_configured: !!TOKEN,
+    env_account_id: ACCOUNT_ID,
+    cookie_token_configured: !!config.token,
+    cookie_account_id: config.accountId,
+  };
+});
+
+router.post("/api/admin/config", async (ctx) => {
+  try {
+    // Read body only once
+    const body = await ctx.request.body.json();
+    
+    if (!body) {
+      ctx.response.status = 400;
+      ctx.response.body = { error: "No JSON data provided" };
+      return;
+    }
+
+    let tokenToSave: string | undefined;
+    let accountIdToSave: string | undefined;
+
+    if (body.token) {
+      tokenToSave = body.token.trim();
+    }
+
+    if (body.account_id) {
+      accountIdToSave = body.account_id.trim();
+    }
+
+    // Save to cookies
+    setConfigCookies(ctx, tokenToSave, accountIdToSave);
+
+    // Get current config for response
+    const config = getConfigFromCookies(ctx);
+
+    ctx.response.body = {
+      success: true,
+      message: "配置已保存到浏览器 Cookie（30天有效期）",
+      token_configured: !!(config.token || TOKEN),
+      account_id: config.accountId || ACCOUNT_ID,
+    };
+  } catch (error) {
+    console.error("Error in /api/admin/config:", error);
+    ctx.response.status = 500;
+    ctx.response.body = { error: `配置更新失败: ${error.message}` };
+  }
+});
+
+// Health check
+router.get("/health", (ctx) => {
+  const config = getConfigFromCookies(ctx);
+  const currentToken = config.token || TOKEN;
+  
+  ctx.response.body = {
+    status: "healthy",
+    token_configured: !!currentToken,
+    env_token_configured: !!TOKEN,
+    cookie_token_configured: !!config.token,
+  };
+});
+
+// CORS middleware (must be before routes)
+app.use(async (ctx, next) => {
+  ctx.response.headers.set("Access-Control-Allow-Origin", "*");
+  ctx.response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  await next();
+});
+
+// Register routes
+app.use(router.routes());
+app.use(router.allowedMethods());
+
+const PORT = parseInt(Deno.env.get("PORT") || "5000");
+console.log(`🚀 ChatGPT Invite Portal starting...`);
+console.log(`📍 Server running on http://localhost:${PORT}`);
+console.log(`🔑 Token configured: ${TOKEN ? "Yes" : "No"}`);
+console.log(`👤 Account ID: ${ACCOUNT_ID}`);
+console.log(`📁 Base directory: ${baseDir}`);
+
+await app.listen({ port: PORT });
