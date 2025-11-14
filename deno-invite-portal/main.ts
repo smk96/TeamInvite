@@ -1,5 +1,5 @@
 import { Application, Router } from "@oak/oak";
-import { join } from "@std/path";
+import { dirname, fromFileUrl, join } from "@std/path";
 
 const app = new Application();
 const router = new Router();
@@ -106,10 +106,13 @@ async function sendInvitesApi(
   }
 }
 
+// Get base directory (works in both local and deployed environments)
+const baseDir = dirname(fromFileUrl(import.meta.url));
+
 // Serve static files
 router.get("/static/:file", async (ctx) => {
   const file = ctx.params.file;
-  const filePath = join(Deno.cwd(), "static", file);
+  const filePath = join(baseDir, "static", file);
   
   try {
     const content = await Deno.readTextFile(filePath);
@@ -123,7 +126,8 @@ router.get("/static/:file", async (ctx) => {
     
     ctx.response.headers.set("Content-Type", contentTypes[ext || ""] || "text/plain");
     ctx.response.body = content;
-  } catch {
+  } catch (error) {
+    console.error(`Error loading static file ${file}:`, error);
     ctx.response.status = 404;
     ctx.response.body = "File not found";
   }
@@ -132,10 +136,11 @@ router.get("/static/:file", async (ctx) => {
 // Main page
 router.get("/", async (ctx) => {
   try {
-    const html = await Deno.readTextFile(join(Deno.cwd(), "templates", "index.html"));
+    const html = await Deno.readTextFile(join(baseDir, "templates", "index.html"));
     ctx.response.headers.set("Content-Type", "text/html");
     ctx.response.body = html;
-  } catch {
+  } catch (error) {
+    console.error("Error loading index.html:", error);
     ctx.response.status = 500;
     ctx.response.body = "Error loading page";
   }
@@ -144,10 +149,11 @@ router.get("/", async (ctx) => {
 // Admin page
 router.get("/admin", async (ctx) => {
   try {
-    const html = await Deno.readTextFile(join(Deno.cwd(), "templates", "admin.html"));
+    const html = await Deno.readTextFile(join(baseDir, "templates", "admin.html"));
     ctx.response.headers.set("Content-Type", "text/html");
     ctx.response.body = html;
-  } catch {
+  } catch (error) {
+    console.error("Error loading admin.html:", error);
     ctx.response.status = 500;
     ctx.response.body = "Error loading page";
   }
@@ -263,10 +269,11 @@ app.use(async (ctx, next) => {
   await next();
 });
 
-const PORT = 5000;
+const PORT = parseInt(Deno.env.get("PORT") || "5000");
 console.log(`🚀 ChatGPT Invite Portal starting...`);
 console.log(`📍 Server running on http://localhost:${PORT}`);
 console.log(`🔑 Token configured: ${TOKEN ? "Yes" : "No"}`);
 console.log(`👤 Account ID: ${ACCOUNT_ID}`);
+console.log(`📁 Base directory: ${baseDir}`);
 
 await app.listen({ port: PORT });
